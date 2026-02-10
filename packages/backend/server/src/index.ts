@@ -4,7 +4,7 @@ import './prelude';
 import { run as runCli } from './cli';
 import { run as runServer } from './server';
 
-if (env.flavors.script) {
+if (globalThis.env.flavors.script) {
   await runCli();
 } else {
   await runServer();

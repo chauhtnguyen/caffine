@@ -1,0 +1,28 @@
+{
+  "copilot": {
+    "enabled": true,
+    "providers": {
+      "ollama": {
+        "baseURL": "http://localhost:11434/v1",
+        "models": [
+          "llama3.2",
+          "mistral",
+          "gemma2",
+          "deepseek-coder-v2",
+          "nomic-embed-text"
+        ]
+      }
+    },
+    "scenarios": {
+      "override_enabled": true,
+      "scenarios": {
+        "chat": "llama3.2",
+        "embedding": "nomic-embed-text",
+        "coding": "deepseek-coder-v2",
+        "quick_text_generation": "mistral",
+        "complex_text_generation": "llama3.2",
+        "polish_and_summarize": "mistral"
+      }
+    }
+  }
+}
