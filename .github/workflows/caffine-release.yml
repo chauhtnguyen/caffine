@@ -156,8 +156,8 @@ jobs:
     name: Build iOS Native & TestFlight
     needs: [prepare, build-ios-web]
     runs-on: macos-14
-    # Only run if secrets are configured
-    if: ${{ secrets.CERTIFICATES_P12_MOBILE != '' }}
+    # Skip for now - requires Apple Developer signing
+    if: false
     env:
       BUILD_TYPE: canary
       RELEASE_VERSION: ${{ needs.prepare.outputs.APP_VERSION }}
