@@ -113,11 +113,10 @@ jobs:
           path: builds/
           retention-days: 7
 
-  build-ios:
-    name: Build iOS/iPadOS (Experimental)
+  build-ios-web:
+    name: Build iOS Web Bundle
     needs: prepare
-    runs-on: macos-14
-    continue-on-error: true
+    runs-on: ubuntu-latest
     env:
       BUILD_TYPE: canary
       RELEASE_VERSION: ${{ needs.prepare.outputs.APP_VERSION }}
@@ -149,9 +148,80 @@ jobs:
       - name: Upload iOS Web Bundle
         uses: actions/upload-artifact@v4
         with:
-          name: affine-ios-web
+          name: ios
           path: packages/frontend/apps/ios/dist/
           retention-days: 7
+
+  build-ios-native:
+    name: Build iOS Native & TestFlight
+    needs: [prepare, build-ios-web]
+    runs-on: macos-14
+    # Only run if secrets are configured
+    if: ${{ secrets.CERTIFICATES_P12_MOBILE != '' }}
+    env:
+      BUILD_TYPE: canary
+      RELEASE_VERSION: ${{ needs.prepare.outputs.APP_VERSION }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Version
+        run: |
+          node -e "const pkg = require('./package.json'); pkg.version = '${{ needs.prepare.outputs.APP_VERSION }}'; require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
+
+      - name: Download iOS Web Bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: ios
+          path: packages/frontend/apps/ios/dist
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies (iOS workspace only)
+        run: yarn install --immutable
+        env:
+          HUSKY: 0
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install Fastlane
+        run: |
+          gem install fastlane
+
+      - name: Capacitor Sync
+        run: |
+          cd packages/frontend/apps/ios
+          yarn sync
+
+      - name: Import Code Signing Certificates
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.CERTIFICATES_P12_MOBILE }}
+          p12-password: ${{ secrets.CERTIFICATES_P12_PASSWORD_MOBILE }}
+
+      - name: Install Provisioning Profile
+        run: |
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          echo -n "${{ secrets.BUILD_PROVISION_PROFILE }}" | base64 --decode -o $PP_PATH
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles
+
+      - name: Build & Upload to TestFlight
+        working-directory: packages/frontend/apps/ios/App
+        run: |
+          fastlane beta
+        env:
+          APPLE_STORE_CONNECT_API_KEY_ID: ${{ secrets.APPLE_STORE_CONNECT_API_KEY_ID }}
+          APPLE_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APPLE_STORE_CONNECT_API_ISSUER_ID }}
+          APPLE_STORE_CONNECT_API_KEY: ${{ secrets.APPLE_STORE_CONNECT_API_KEY }}
 
   create-release:
     name: Create GitHub Release
