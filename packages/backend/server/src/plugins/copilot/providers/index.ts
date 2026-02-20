@@ -2,6 +2,7 @@ import {
   AnthropicOfficialProvider,
   AnthropicVertexProvider,
 } from './anthropic';
+import { CLIProxyProvider } from './cliproxy';
 import { FalProvider } from './fal';
 import { GeminiGenerativeProvider, GeminiVertexProvider } from './gemini';
 import { MorphProvider } from './morph';
@@ -18,13 +19,16 @@ export const CopilotProviders = [
   AnthropicOfficialProvider,
   AnthropicVertexProvider,
   MorphProvider,
+  // caffine custom providers
   OllamaProvider,
+  CLIProxyProvider,
 ];
 
 export {
   AnthropicOfficialProvider,
   AnthropicVertexProvider,
 } from './anthropic';
+export { CLIProxyProvider } from './cliproxy';
 export { CopilotProviderFactory } from './factory';
 export { FalProvider } from './fal';
 export { GeminiGenerativeProvider, GeminiVertexProvider } from './gemini';

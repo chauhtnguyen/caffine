@@ -17,7 +17,8 @@ const ROOT = path.resolve(__dirname, '..');
 const envBuildType = (process.env.BUILD_TYPE || 'canary').trim().toLowerCase();
 const buildType = ReleaseTypeSchema.parse(envBuildType);
 const stableBuild = buildType === 'stable';
-const productName = !stableBuild ? `AFFiNE-${buildType}` : 'AFFiNE';
+// caffine: custom product name
+const productName = 'Caffeine';
 const icoPath = path.join(
   ROOT,
   !stableBuild
@@ -71,7 +72,8 @@ log(`parsed args: arch=${arch}, platform=${platform}`);
 
 const appIdMap = {
   internal: 'pro.affine.internal',
-  canary: 'pro.affine.canary',
+  // caffine: custom app ID so it doesn't conflict with official AFFiNE
+  canary: 'pro.caffeine.app',
   beta: 'pro.affine.beta',
   stable: 'pro.affine.app',
 };

@@ -14,6 +14,9 @@ export enum CopilotProviderType {
   OpenAI = 'openai',
   Perplexity = 'perplexity',
   Morph = 'morph',
+  // caffine custom providers
+  Ollama = 'ollama',
+  CLIProxy = 'cliproxy',
 }
 
 export const CopilotProviderSchema = z.object({

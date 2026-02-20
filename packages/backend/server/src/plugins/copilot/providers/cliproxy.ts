@@ -24,61 +24,53 @@ import type {
 import { CopilotProviderType, ModelInputType, ModelOutputType } from './types';
 import { chatToGPTMessage, TextStreamParser } from './utils';
 
-export type OllamaConfig = {
+export type CLIProxyConfig = {
   baseURL?: string;
+  apiKey?: string;
   models?: string[];
 };
 
-export class OllamaProvider extends CopilotProvider<OllamaConfig> {
-  static readonly ID = 'ollama';
-  readonly type = CopilotProviderType.Ollama;
+/**
+ * CLIProxyAPI provider — routes requests through the locally-running
+ * CLIProxyAPI service which proxies to cloud LLMs (Claude, Gemini, Codex, etc.)
+ * via OAuth / API keys configured in CLIProxyAPI's own config.yaml.
+ *
+ * Uses the OpenAI-compatible /v1/chat/completions endpoint.
+ */
+export class CLIProxyProvider extends CopilotProvider<CLIProxyConfig> {
+  static readonly ID = 'cliproxy';
+  readonly type = CopilotProviderType.CLIProxy;
 
   private provider?: ReturnType<typeof createOpenAI>;
 
-  // Human-readable names for known Ollama models
+  // Human-readable names for cloud models available through CLIProxyAPI
   private static readonly MODEL_NAMES: Record<string, string> = {
-    'gemma3:27b': 'Gemma3 27B',
-    'qwen3:30b': 'Qwen3 30B',
-    'qwen3-coder:30b': 'Qwen3 Coder 30B',
-    'glm-4.7-flash:latest': 'GLM 4.7 Flash',
-    'gpt-oss:120b': 'GPT-OSS 120B',
-    'gpt-oss:20b': 'GPT-OSS 20B',
-    'qwen3-vl:8b': 'Qwen3 VL 8B',
-    'deepseek-ocr:latest': 'DeepSeek OCR',
-    'nomic-embed-text:latest': 'Nomic Embed Text',
-    'mxbai-embed-large:latest': 'MxBAI Embed Large',
-    'embeddinggemma:latest': 'Embedding Gemma',
-    'nuextract:latest': 'NuExtract',
+    'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5',
+    'claude-opus-4-5-20251101': 'Claude Opus 4.5',
+    'claude-haiku-4-5-20251001': 'Claude Haiku 4.5',
+    'gemini-2.5-flash': 'Gemini 2.5 Flash',
+    'gemini-2.5-pro': 'Gemini 2.5 Pro',
+    'gpt-4o': 'GPT 4o',
+    'gpt-4o-mini': 'GPT 4o Mini',
   };
 
   private static modelName(id: string): string {
-    return OllamaProvider.MODEL_NAMES[id] || `Ollama ${id}`;
+    return CLIProxyProvider.MODEL_NAMES[id] || `CLIProxy ${id}`;
   }
 
   get models(): CopilotProviderModel[] {
-    const defaultModels = Object.keys(OllamaProvider.MODEL_NAMES);
+    const defaultModels = Object.keys(CLIProxyProvider.MODEL_NAMES);
     const configuredModels = this.config?.models || defaultModels;
 
     return configuredModels.map(modelId => ({
       id: modelId,
-      name: OllamaProvider.modelName(modelId),
+      name: CLIProxyProvider.modelName(modelId),
       capabilities: [
         {
-          input: modelId.includes('vl')
-            ? [ModelInputType.Text, ModelInputType.Image]
-            : [ModelInputType.Text],
+          input: [ModelInputType.Text, ModelInputType.Image],
           output: [ModelOutputType.Text],
-          defaultForOutputType: modelId === 'qwen3:30b',
+          defaultForOutputType: modelId === 'claude-sonnet-4-5-20250929',
         },
-        ...(modelId.includes('embed') || modelId.includes('Embed')
-          ? [
-              {
-                input: [ModelInputType.Text],
-                output: [ModelOutputType.Embedding],
-                defaultForOutputType: modelId === 'nomic-embed-text:latest',
-              },
-            ]
-          : []),
       ],
     }));
   }
@@ -89,10 +81,12 @@ export class OllamaProvider extends CopilotProvider<OllamaConfig> {
 
   private getProvider() {
     if (!this.provider) {
-      const baseURL = this.config?.baseURL || 'http://localhost:11434/v1';
+      const baseURL = this.config?.baseURL || 'http://localhost:3456/v1';
+      const apiKey = this.config?.apiKey || '';
+
       this.provider = createOpenAI({
         baseURL,
-        apiKey: 'ollama',
+        apiKey,
       });
     }
     return this.provider;
@@ -128,7 +122,7 @@ export class OllamaProvider extends CopilotProvider<OllamaConfig> {
       throw new CopilotProviderSideError({
         provider: this.type,
         kind: 'text',
-        message: e.message || 'Failed to generate text with Ollama',
+        message: e.message || 'Failed to generate text with CLIProxy',
       });
     }
   }
@@ -184,7 +178,7 @@ export class OllamaProvider extends CopilotProvider<OllamaConfig> {
       throw new CopilotProviderSideError({
         provider: this.type,
         kind: 'text',
-        message: e.message || 'Failed to stream text with Ollama',
+        message: e.message || 'Failed to stream text with CLIProxy',
       });
     }
   }
@@ -223,7 +217,7 @@ export class OllamaProvider extends CopilotProvider<OllamaConfig> {
         provider: this.type,
         kind: 'structure',
         message:
-          e.message || 'Failed to generate structured output with Ollama',
+          e.message || 'Failed to generate structured output with CLIProxy',
       });
     }
   }
@@ -231,7 +225,7 @@ export class OllamaProvider extends CopilotProvider<OllamaConfig> {
   override async embedding(
     cond: ModelConditions,
     text: string | string[],
-    _options: CopilotEmbeddingOptions = { dimensions: 768 }
+    _options: CopilotEmbeddingOptions = { dimensions: 256 }
   ): Promise<number[][]> {
     const texts = Array.isArray(text) ? text : [text];
     const fullCond = { ...cond, outputType: ModelOutputType.Embedding };
@@ -253,30 +247,36 @@ export class OllamaProvider extends CopilotProvider<OllamaConfig> {
       throw new CopilotProviderSideError({
         provider: this.type,
         kind: 'embedding',
-        message: e.message || 'Failed to generate embeddings with Ollama',
+        message: e.message || 'Failed to generate embeddings with CLIProxy',
       });
     }
   }
 
   override async refreshOnlineModels() {
     try {
-      const baseURL = this.config?.baseURL || 'http://localhost:11434';
-      const response = await fetch(`${baseURL}/api/tags`);
+      const baseURL = this.config?.baseURL || 'http://localhost:3456/v1';
+      const apiKey = this.config?.apiKey || '';
+      const headers: Record<string, string> = {};
+      if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+      }
+
+      const response = await fetch(`${baseURL}/models`, { headers });
 
       if (response.ok) {
         const data = (await response.json()) as {
-          models?: { name: string }[];
+          data?: { id: string }[];
         };
-        if (data.models && Array.isArray(data.models)) {
-          this.onlineModelList = data.models.map(m => m.name);
+        if (data.data && Array.isArray(data.data)) {
+          this.onlineModelList = data.data.map(m => m.id);
           this.logger.log(
-            `Fetched ${this.onlineModelList.length} models from Ollama`
+            `Fetched ${this.onlineModelList.length} models from CLIProxyAPI`
           );
         }
       }
     } catch (e) {
       this.logger.warn(
-        'Failed to fetch Ollama models, using configured models',
+        'Failed to fetch CLIProxyAPI models, using configured models',
         e
       );
     }

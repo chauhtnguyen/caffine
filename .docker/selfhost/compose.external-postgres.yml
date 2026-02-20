@@ -1,0 +1,54 @@
+# AFFiNE/Caffine with external PostgreSQL 17 (running on host, not in Docker).
+# Use: docker compose -f compose.external-postgres.yml up -d
+# Requires: .env with DATABASE_URL, UPLOAD_LOCATION, CONFIG_LOCATION (see .env.external-postgres.example).
+# Set AFFINE_IMAGE=caffine:latest to run the custom Caffine branch (build with ./build-caffine-image.sh first).
+
+name: affine
+services:
+  affine:
+    image: ${AFFINE_IMAGE:-ghcr.io/toeverything/affine:stable}
+    container_name: affine_server
+    ports:
+      - '${PORT:-3010}:3010'
+    depends_on:
+      redis:
+        condition: service_healthy
+      affine_migration:
+        condition: service_completed_successfully
+    volumes:
+      - ${UPLOAD_LOCATION}:/root/.affine/storage
+      - ${CONFIG_LOCATION}:/root/.affine/config
+    env_file:
+      - .env
+    environment:
+      - REDIS_SERVER_HOST=redis
+      - DATABASE_URL=${DATABASE_URL}
+      - AFFINE_INDEXER_ENABLED=false
+    restart: unless-stopped
+
+  affine_migration:
+    image: ${AFFINE_IMAGE:-ghcr.io/toeverything/affine:stable}
+    container_name: affine_migration_job
+    volumes:
+      - ${UPLOAD_LOCATION}:/root/.affine/storage
+      - ${CONFIG_LOCATION}:/root/.affine/config
+    command: ['sh', '-c', 'node ./scripts/self-host-predeploy.js']
+    env_file:
+      - .env
+    environment:
+      - REDIS_SERVER_HOST=redis
+      - DATABASE_URL=${DATABASE_URL}
+      - AFFINE_INDEXER_ENABLED=false
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  redis:
+    image: redis
+    container_name: affine_redis
+    healthcheck:
+      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped

@@ -8,9 +8,11 @@ import {
   AnthropicOfficialConfig,
   AnthropicVertexConfig,
 } from './providers/anthropic';
+import { CLIProxyConfig } from './providers/cliproxy';
 import type { FalConfig } from './providers/fal';
 import { GeminiGenerativeConfig, GeminiVertexConfig } from './providers/gemini';
 import { MorphConfig } from './providers/morph';
+import { OllamaConfig } from './providers/ollama';
 import { OpenAIConfig } from './providers/openai';
 import { PerplexityConfig } from './providers/perplexity';
 import { VertexSchema } from './providers/types';
@@ -35,6 +37,9 @@ declare global {
         anthropic: ConfigItem<AnthropicOfficialConfig>;
         anthropicVertex: ConfigItem<AnthropicVertexConfig>;
         morph: ConfigItem<MorphConfig>;
+        // caffine custom providers
+        ollama: ConfigItem<OllamaConfig>;
+        cliproxy: ConfigItem<CLIProxyConfig>;
       };
     };
   }
@@ -110,6 +115,20 @@ defineModuleConfig('copilot', {
   'providers.morph': {
     desc: 'The config for the morph provider.',
     default: {},
+  },
+  // caffine custom providers
+  'providers.ollama': {
+    desc: 'The config for the Ollama local LLM provider.',
+    default: {
+      baseURL: 'http://localhost:11434/v1',
+    },
+  },
+  'providers.cliproxy': {
+    desc: 'The config for the CLIProxyAPI provider (routes to cloud LLMs via local proxy).',
+    default: {
+      baseURL: 'http://localhost:3456/v1',
+      apiKey: '',
+    },
   },
   unsplash: {
     desc: 'The config for the unsplash key.',

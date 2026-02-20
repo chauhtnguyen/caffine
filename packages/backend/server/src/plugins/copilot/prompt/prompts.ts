@@ -1905,6 +1905,16 @@ const CHAT_PROMPT: Omit<Prompt, 'name'> = {
     'gemini-2.5-flash',
     'gemini-2.5-pro',
     'claude-sonnet-4-5@20250929',
+    // caffine: cloud models via CLIProxyAPI
+    'claude-sonnet-4-5-20250929',
+    'claude-opus-4-5-20251101',
+    'claude-haiku-4-5-20251001',
+    'gpt-4o',
+    // caffine: local models via Ollama
+    'qwen3:30b',
+    'qwen3-coder:30b',
+    'gemma3:27b',
+    'glm-4.7-flash:latest',
   ],
   messages: [
     {
