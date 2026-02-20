@@ -1,0 +1,196 @@
+name: CAFFiNE Release (macOS Build)
+
+on:
+  push:
+    branches:
+      - canary
+  workflow_dispatch:
+    inputs:
+      create-release:
+        description: 'Create GitHub Release?'
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  actions: write
+  attestations: write
+
+env:
+  DEBUG: 'affine:*,napi:*'
+  APP_NAME: affine
+  MACOSX_DEPLOYMENT_TARGET: '10.13'
+
+jobs:
+  prepare:
+    name: Prepare Version
+    runs-on: ubuntu-latest
+    outputs:
+      APP_VERSION: ${{ steps.version.outputs.APP_VERSION }}
+      GIT_SHORT_HASH: ${{ steps.version.outputs.GIT_SHORT_HASH }}
+      BUILD_TYPE: canary
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Version
+        id: version
+        run: |
+          GIT_SHORT_HASH=$(git rev-parse --short HEAD)
+          APP_VERSION=$(date '+%Y.%-m.%-d-canary.%-H%M')
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_OUTPUT"
+          echo "GIT_SHORT_HASH=$GIT_SHORT_HASH" >> "$GITHUB_OUTPUT"
+          echo "Version: $APP_VERSION"
+          echo "Hash: $GIT_SHORT_HASH"
+
+  build-macos:
+    name: Build macOS
+    needs: prepare
+    strategy:
+      matrix:
+        spec:
+          - arch: x64
+            runner: macos-13
+            target: x86_64-apple-darwin
+          - arch: arm64
+            runner: macos-14
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.spec.runner }}
+    env:
+      BUILD_TYPE: canary
+      RELEASE_VERSION: ${{ needs.prepare.outputs.APP_VERSION }}
+      SKIP_GENERATE_ASSETS: 0
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Version in package.json
+        run: |
+          node -e "const pkg = require('./package.json'); pkg.version = '${{ needs.prepare.outputs.APP_VERSION }}'; require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: yarn install --immutable
+        env:
+          HUSKY: 0
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          target: ${{ matrix.spec.target }}
+
+      - name: Build AFFiNE native
+        run: |
+          cd packages/frontend/native
+          yarn workspace @affine/native build
+        env:
+          CARGO_BUILD_TARGET: ${{ matrix.spec.target }}
+
+      - name: Generate Assets
+        run: yarn workspace @affine/electron generate-assets
+
+      - name: Build Electron Layers
+        run: yarn workspace @affine/electron build
+
+      - name: Package DMG (unsigned)
+        run: |
+          yarn workspace @affine/electron make --platform=darwin --arch=${{ matrix.spec.arch }}
+        env:
+          SKIP_WEB_BUILD: 1
+          NODE_OPTIONS: --max-old-space-size=14384
+          # Skip code signing
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Rename artifacts
+        run: |
+          mkdir -p builds
+          # Find and rename DMG
+          find packages/frontend/apps/electron/out/canary/make -name "*.dmg" -exec mv {} ./builds/affine-${{ needs.prepare.outputs.APP_VERSION }}-canary-macos-${{ matrix.spec.arch }}.dmg \;
+          # Find and rename ZIP
+          find packages/frontend/apps/electron/out/canary/make/zip/darwin/${{ matrix.spec.arch }} -name "*.zip" -exec mv {} ./builds/affine-${{ needs.prepare.outputs.APP_VERSION }}-canary-macos-${{ matrix.spec.arch }}.zip \;
+          ls -lh builds/
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: affine-macos-${{ matrix.spec.arch }}
+          path: builds/
+          retention-days: 7
+
+  create-release:
+    name: Create GitHub Release
+    needs: [prepare, build-macos]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || inputs.create-release }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-builds/
+
+      - name: List downloaded files
+        run: |
+          ls -lhR release-builds/
+
+      - name: Generate latest.yml for macOS
+        run: |
+          VERSION="${{ needs.prepare.outputs.APP_VERSION }}"
+
+          # Create latest.yml for electron-updater
+          cat > latest.yml << EOF
+          version: $VERSION
+          files:
+            - url: affine-$VERSION-canary-macos-x64.dmg
+              sha512: $(shasum -a 512 release-builds/affine-macos-x64/affine-$VERSION-canary-macos-x64.dmg | cut -d' ' -f1)
+              size: $(stat -f%z release-builds/affine-macos-x64/affine-$VERSION-canary-macos-x64.dmg)
+            - url: affine-$VERSION-canary-macos-x64.zip
+              sha512: $(shasum -a 512 release-builds/affine-macos-x64/affine-$VERSION-canary-macos-x64.zip | cut -d' ' -f1)
+              size: $(stat -f%z release-builds/affine-macos-x64/affine-$VERSION-canary-macos-x64.zip)
+            - url: affine-$VERSION-canary-macos-arm64.dmg
+              sha512: $(shasum -a 512 release-builds/affine-macos-arm64/affine-$VERSION-canary-macos-arm64.dmg | cut -d' ' -f1)
+              size: $(stat -f%z release-builds/affine-macos-arm64/affine-$VERSION-canary-macos-arm64.dmg)
+            - url: affine-$VERSION-canary-macos-arm64.zip
+              sha512: $(shasum -a 512 release-builds/affine-macos-arm64/affine-$VERSION-canary-macos-arm64.zip | cut -d' ' -f1)
+              size: $(stat -f%z release-builds/affine-macos-arm64/affine-$VERSION-canary-macos-arm64.zip)
+          path: affine-$VERSION-canary-macos-x64.dmg
+          sha512: $(shasum -a 512 release-builds/affine-macos-x64/affine-$VERSION-canary-macos-x64.dmg | cut -d' ' -f1)
+          releaseDate: $(date -u +"%Y-%m-%dT%H:%M:%S.000Z")
+          EOF
+
+          cat latest.yml
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.prepare.outputs.APP_VERSION }}
+          name: CAFFiNE ${{ needs.prepare.outputs.APP_VERSION }}
+          body: |
+            **CAFFiNE Canary Build**
+
+            Version: ${{ needs.prepare.outputs.APP_VERSION }}
+            Commit: ${{ needs.prepare.outputs.GIT_SHORT_HASH }}
+
+            ### Downloads:
+            - **macOS (Intel)**: affine-${{ needs.prepare.outputs.APP_VERSION }}-canary-macos-x64.dmg
+            - **macOS (Apple Silicon)**: affine-${{ needs.prepare.outputs.APP_VERSION }}-canary-macos-arm64.dmg
+
+            ### Auto-Update
+            This build supports automatic updates. After installation, the app will check for updates automatically.
+
+            ### Note
+            These builds are **unsigned** - you may need to allow them in System Preferences > Security & Privacy on first launch.
+          draft: false
+          prerelease: true
+          files: |
+            latest.yml
+            release-builds/affine-macos-x64/affine-${{ needs.prepare.outputs.APP_VERSION }}-canary-macos-x64.dmg
+            release-builds/affine-macos-x64/affine-${{ needs.prepare.outputs.APP_VERSION }}-canary-macos-x64.zip
+            release-builds/affine-macos-arm64/affine-${{ needs.prepare.outputs.APP_VERSION }}-canary-macos-arm64.dmg
+            release-builds/affine-macos-arm64/affine-${{ needs.prepare.outputs.APP_VERSION }}-canary-macos-arm64.zip
