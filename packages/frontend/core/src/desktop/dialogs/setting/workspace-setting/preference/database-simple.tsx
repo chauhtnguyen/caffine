@@ -1,13 +1,10 @@
+import { notify } from '@affine/component';
 import { SettingRow } from '@affine/component/setting-components';
 import { Button } from '@affine/component/ui/button';
 import { Input } from '@affine/component/ui/input';
-import { notify } from '@affine/component';
-import { useI18n } from '@affine/i18n';
 import { useCallback, useState } from 'react';
 
 export const DatabasePanel = () => {
-  const t = useI18n();
-  
   const [config, setConfig] = useState({
     host: 'localhost',
     port: 5432,
@@ -16,9 +13,12 @@ export const DatabasePanel = () => {
     password: '',
   });
 
-  const handleInputChange = useCallback((field: string, value: string | number) => {
-    setConfig(prev => ({ ...prev, [field]: value }));
-  }, []);
+  const handleInputChange = useCallback(
+    (field: string, value: string | number) => {
+      setConfig(prev => ({ ...prev, [field]: value }));
+    },
+    []
+  );
 
   const handleTestConnection = useCallback(async () => {
     try {
@@ -28,7 +28,7 @@ export const DatabasePanel = () => {
         body: JSON.stringify(config),
       });
       const result = await response.json();
-      
+
       if (result.success) {
         notify.success({
           title: 'Connection Successful',
@@ -56,7 +56,7 @@ export const DatabasePanel = () => {
         body: JSON.stringify(config),
       });
       const result = await response.json();
-      
+
       if (result.success) {
         notify.success({
           title: 'Configuration Saved',
@@ -83,10 +83,24 @@ export const DatabasePanel = () => {
         borderRadius: '8px',
       }}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', width: '100%', marginTop: '12px' }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          width: '100%',
+          marginTop: '12px',
+        }}
+      >
         {/* Host */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--affine-text-secondary-color)' }}>
+          <label
+            style={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: 'var(--affine-text-secondary-color)',
+            }}
+          >
             Host
           </label>
           <Input
@@ -99,13 +113,21 @@ export const DatabasePanel = () => {
 
         {/* Port */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--affine-text-secondary-color)' }}>
+          <label
+            style={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: 'var(--affine-text-secondary-color)',
+            }}
+          >
             Port
           </label>
           <Input
             type="number"
             value={config.port}
-            onChange={e => handleInputChange('port', parseInt(e.target.value) || 5432)}
+            onChange={e =>
+              handleInputChange('port', parseInt(e.target.value) || 5432)
+            }
             placeholder="5432"
             style={{ width: '100%', height: '36px' }}
           />
@@ -113,7 +135,13 @@ export const DatabasePanel = () => {
 
         {/* Database */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--affine-text-secondary-color)' }}>
+          <label
+            style={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: 'var(--affine-text-secondary-color)',
+            }}
+          >
             Database
           </label>
           <Input
@@ -126,7 +154,13 @@ export const DatabasePanel = () => {
 
         {/* Username */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--affine-text-secondary-color)' }}>
+          <label
+            style={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: 'var(--affine-text-secondary-color)',
+            }}
+          >
             Username
           </label>
           <Input
@@ -139,7 +173,13 @@ export const DatabasePanel = () => {
 
         {/* Password */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--affine-text-secondary-color)' }}>
+          <label
+            style={{
+              fontSize: '13px',
+              fontWeight: 500,
+              color: 'var(--affine-text-secondary-color)',
+            }}
+          >
             Password
           </label>
           <Input
@@ -153,10 +193,13 @@ export const DatabasePanel = () => {
 
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-          <Button onClick={handleTestConnection} variant="secondary">
+          <Button
+            onClick={() => void handleTestConnection()}
+            variant="secondary"
+          >
             Test Connection
           </Button>
-          <Button onClick={handleSave} variant="primary">
+          <Button onClick={() => void handleSave()} variant="primary">
             Save Configuration
           </Button>
         </div>

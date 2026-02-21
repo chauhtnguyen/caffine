@@ -51,8 +51,8 @@ export function useDatabaseConfig() {
   }, []);
 
   // Update configuration
-  const updateConfig = useCallback(async (newConfig: Partial<DatabaseConfig>) => {
-    try {
+  const updateConfig = useCallback(
+    async (newConfig: Partial<DatabaseConfig>) => {
       const response = await fetch('/api/database/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -68,47 +68,47 @@ export function useDatabaseConfig() {
       } else {
         throw new Error(data.message || 'Failed to update configuration');
       }
-    } catch (err) {
-      throw err;
-    }
-  }, [loadConfig]);
+    },
+    [loadConfig]
+  );
 
   // Test connection
-  const testConnection = useCallback(async (testConfig?: Partial<DatabaseConfig>): Promise<DatabaseConnectionTest> => {
-    try {
-      const response = await fetch('/api/database/test-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(testConfig || {}),
-      });
+  const testConnection = useCallback(
+    async (
+      testConfig?: Partial<DatabaseConfig>
+    ): Promise<DatabaseConnectionTest> => {
+      try {
+        const response = await fetch('/api/database/test-connection', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(testConfig || {}),
+        });
 
-      const result = await response.json();
-      return result;
-    } catch (err) {
-      return {
-        success: false,
-        error: err.message || 'Connection test failed',
-      };
-    }
-  }, []);
+        const result = await response.json();
+        return result;
+      } catch (err) {
+        return {
+          success: false,
+          error: err.message || 'Connection test failed',
+        };
+      }
+    },
+    []
+  );
 
   // Reset to defaults
   const resetToDefaults = useCallback(async () => {
-    try {
-      const response = await fetch('/api/database/reset', {
-        method: 'POST',
-      });
+    const response = await fetch('/api/database/reset', {
+      method: 'POST',
+    });
 
-      const data = await response.json();
+    const data = await response.json();
 
-      if (data.success) {
-        await loadConfig();
-        return true;
-      } else {
-        throw new Error('Failed to reset configuration');
-      }
-    } catch (err) {
-      throw err;
+    if (data.success) {
+      await loadConfig();
+      return true;
+    } else {
+      throw new Error('Failed to reset configuration');
     }
   }, [loadConfig]);
 
@@ -129,8 +129,8 @@ export function useDatabaseConfig() {
 
   // Load config on mount
   useEffect(() => {
-    loadConfig();
-    loadPresets();
+    loadConfig().catch(console.error);
+    loadPresets().catch(console.error);
   }, [loadConfig, loadPresets]);
 
   return {

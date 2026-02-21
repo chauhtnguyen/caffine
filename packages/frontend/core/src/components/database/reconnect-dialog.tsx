@@ -1,8 +1,8 @@
 import { Button } from '@affine/component/ui/button';
 import { Modal } from '@affine/component/ui/modal';
-import { useI18n } from '@affine/i18n';
-import { useCallback, useEffect, useState } from 'react';
 import { useDatabaseStatus } from '@affine/core/hooks/use-database-status';
+import { useCallback, useEffect, useState } from 'react';
+
 import * as styles from './reconnect-dialog.css';
 
 interface ReconnectDialogProps {
@@ -16,7 +16,6 @@ export const DatabaseReconnectDialog = ({
   onClose,
   onOpenSettings,
 }: ReconnectDialogProps) => {
-  const t = useI18n();
   const { status, checkStatus, isConnected } = useDatabaseStatus();
   const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState(5);
@@ -28,14 +27,19 @@ export const DatabaseReconnectDialog = ({
     }
   }, [isConnected, open, onClose]);
 
+  const handleRetry = useCallback(async () => {
+    setRetryCount(c => c + 1);
+    await checkStatus();
+  }, [checkStatus]);
+
   // Auto-retry countdown
   useEffect(() => {
     if (!open) return;
 
     const interval = setInterval(() => {
-      setCountdown((c) => {
+      setCountdown(c => {
         if (c <= 1) {
-          handleRetry();
+          handleRetry().catch(console.error);
           return 5;
         }
         return c - 1;
@@ -43,12 +47,7 @@ export const DatabaseReconnectDialog = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [open, retryCount]);
-
-  const handleRetry = useCallback(async () => {
-    setRetryCount((c) => c + 1);
-    await checkStatus();
-  }, [checkStatus]);
+  }, [open, retryCount, handleRetry]);
 
   const handleOpenSettings = useCallback(() => {
     onOpenSettings();
@@ -71,9 +70,7 @@ export const DatabaseReconnectDialog = ({
       </div>
 
       <div className={styles.dialogBody}>
-        <p className={styles.message}>
-          Lost connection to database server
-        </p>
+        <p className={styles.message}>Lost connection to database server</p>
 
         {status && (
           <div className={styles.connectionInfo}>
@@ -94,9 +91,7 @@ export const DatabaseReconnectDialog = ({
           <div className={styles.countdown}>
             Automatically retrying in {countdown}s...
           </div>
-          <div className={styles.attemptCount}>
-            Attempt #{retryCount}
-          </div>
+          <div className={styles.attemptCount}>Attempt #{retryCount}</div>
         </div>
 
         <div className={styles.options}>
@@ -111,7 +106,7 @@ export const DatabaseReconnectDialog = ({
       </div>
 
       <div className={styles.dialogActions}>
-        <Button onClick={handleRetry} variant="secondary">
+        <Button onClick={() => void handleRetry()} variant="secondary">
           Retry Now
         </Button>
         <Button onClick={handleOpenSettings} variant="primary">

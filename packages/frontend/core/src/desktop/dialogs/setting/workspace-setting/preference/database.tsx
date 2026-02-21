@@ -1,12 +1,11 @@
+import { notify } from '@affine/component';
 import { SettingRow } from '@affine/component/setting-components';
 import { Button } from '@affine/component/ui/button';
 import { Input } from '@affine/component/ui/input';
-import { notify } from '@affine/component';
-import { useI18n } from '@affine/i18n';
-import { useCallback, useEffect, useState } from 'react';
-import { useLiveData } from '@toeverything/infra';
 import { useDatabaseConfig } from '@affine/core/hooks/use-database-config';
 import { useDatabaseStatus } from '@affine/core/hooks/use-database-status';
+import { useCallback, useEffect, useState } from 'react';
+
 import * as styles from './database.css';
 
 interface DatabaseConfig {
@@ -19,8 +18,7 @@ interface DatabaseConfig {
 }
 
 export const DatabasePanel = () => {
-  const t = useI18n();
-  const { config, loading, updateConfig, testConnection } = useDatabaseConfig();
+  const { config, updateConfig, testConnection } = useDatabaseConfig();
   const { status, isConnected } = useDatabaseStatus();
 
   const [formData, setFormData] = useState<DatabaseConfig>({
@@ -54,10 +52,13 @@ export const DatabasePanel = () => {
     }
   }, [config]);
 
-  const handleInputChange = useCallback((field: keyof DatabaseConfig, value: string | number | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setTestResult(null); // Clear test result when config changes
-  }, []);
+  const handleInputChange = useCallback(
+    (field: keyof DatabaseConfig, value: string | number | boolean) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+      setTestResult(null); // Clear test result when config changes
+    },
+    []
+  );
 
   const handleTestConnection = useCallback(async () => {
     setTesting(true);
@@ -157,10 +158,16 @@ export const DatabasePanel = () => {
         {/* Connection Status */}
         <div className={styles.statusBar}>
           <div className={styles.statusIndicator}>
-            <span className={isConnected ? styles.statusDot : styles.statusDotOffline} />
+            <span
+              className={
+                isConnected ? styles.statusDot : styles.statusDotOffline
+              }
+            />
             <span className={styles.statusText}>
               {isConnected ? (
-                <>Connected to {status?.host}:{status?.port}/{status?.database}</>
+                <>
+                  Connected to {status?.host}:{status?.port}/{status?.database}
+                </>
               ) : (
                 'Database Offline'
               )}
@@ -184,7 +191,9 @@ export const DatabasePanel = () => {
           <Input
             type="number"
             value={formData.port}
-            onChange={e => handleInputChange('port', parseInt(e.target.value) || 5432)}
+            onChange={e =>
+              handleInputChange('port', parseInt(e.target.value) || 5432)
+            }
             placeholder="5432"
             className={styles.input}
           />
@@ -234,7 +243,11 @@ export const DatabasePanel = () => {
 
         {/* Test Result */}
         {testResult && (
-          <div className={testResult.success ? styles.successMessage : styles.errorMessage}>
+          <div
+            className={
+              testResult.success ? styles.successMessage : styles.errorMessage
+            }
+          >
             {testResult.success ? (
               <>
                 ✓ Connection successful
@@ -265,7 +278,7 @@ export const DatabasePanel = () => {
         {/* Action Buttons */}
         <div className={styles.actions}>
           <Button
-            onClick={handleTestConnection}
+            onClick={() => void handleTestConnection()}
             disabled={testing}
             variant="secondary"
           >
@@ -273,7 +286,7 @@ export const DatabasePanel = () => {
           </Button>
 
           <Button
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={saving || !testResult?.success}
             variant="primary"
           >

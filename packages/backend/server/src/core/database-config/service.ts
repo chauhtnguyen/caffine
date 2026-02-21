@@ -1,8 +1,10 @@
+import { existsSync, mkdirSync,readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname,join } from 'node:path';
+
 import { Injectable, Logger } from '@nestjs/common';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { join, dirname } from 'path';
-import { homedir } from 'os';
 import { PrismaClient } from '@prisma/client';
+
 import type {
   DatabaseConfig,
   DatabaseConnectionTest,
@@ -12,14 +14,13 @@ import type {
 @Injectable()
 export class DatabaseConfigService {
   private readonly logger = new Logger(DatabaseConfigService.name);
-  private configPath: string;
+  private readonly configPath: string;
   private config: DatabaseConfig;
 
   constructor() {
     // Store config in user's home directory
     this.configPath = join(
-      process.env.AFFINE_CONFIG_PATH ||
-        join(homedir(), '.affine', 'config'),
+      process.env.AFFINE_CONFIG_PATH || join(homedir(), '.affine', 'config'),
       'database.json'
     );
     this.loadConfig();
@@ -185,7 +186,10 @@ export class DatabaseConfigService {
         errorMessage = 'Connection refused - PostgreSQL may not be running';
       } else if (errorMessage.includes('password authentication failed')) {
         errorMessage = 'Authentication failed - check username and password';
-      } else if (errorMessage.includes('database') && errorMessage.includes('does not exist')) {
+      } else if (
+        errorMessage.includes('database') &&
+        errorMessage.includes('does not exist')
+      ) {
         errorMessage = `Database "${configToTest.database}" does not exist`;
       } else if (errorMessage.includes('ETIMEDOUT')) {
         errorMessage = 'Connection timed out - check host and port';
@@ -225,7 +229,14 @@ export class DatabaseConfigService {
    * Export config as connection URL (for user to copy)
    */
   exportConnectionUrl(includeSsl = false): string {
-    const { host, port, database, username, password, ssl } = this.config;
+    const {
+      host,
+      port,
+      database,
+      username,
+      password: _password,
+      ssl,
+    } = this.config;
     const sslParam = includeSsl && ssl ? '?ssl=true' : '';
     // Mask password for export
     return `postgresql://${username}:****@${host}:${port}/${database}${sslParam}`;
