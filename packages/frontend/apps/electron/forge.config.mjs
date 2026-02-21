@@ -32,7 +32,7 @@ const makers = [
       config: {
         format: 'ULMO',
         icon: icnsPath,
-        name: 'AFFiNE',
+        name: productName,
         'icon-size': 128,
         background: path.join(
           __dirname,
@@ -66,7 +66,7 @@ const makers = [
   {
     name: '@electron-forge/maker-zip',
     config: {
-      name: 'affine',
+      name: productName.toLowerCase(),
       iconUrl: icoPath,
       setupIcon: icoPath,
       platforms: ['darwin', 'linux', 'win32'],
@@ -207,8 +207,7 @@ export default {
     ignore: [/\.map$/],
     asar: true,
     extendInfo: {
-      NSAudioCaptureUsageDescription:
-        'Please allow access in order to capture audio from other apps by AFFiNE.',
+      NSAudioCaptureUsageDescription: `Please allow access in order to capture audio from other apps by ${productName}.`,
     },
   },
   makers,
@@ -241,6 +240,19 @@ export default {
           path.join(__dirname, '..', '..', '..', 'node_modules'),
           path.join(__dirname, 'node_modules')
         );
+      }
+    },
+    postPackage: async (_, { outputPaths, platform: pkgPlatform }) => {
+      // caffine: re-sign the app after FusesPlugin modifies the Electron binary,
+      // which invalidates the existing code signature and causes SIGKILL on launch
+      if (pkgPlatform === 'darwin') {
+        const appPath = outputPaths[0];
+        const appBundle = path.join(appPath, `${productName}.app`);
+        console.log(`Re-signing ${appBundle} ...`);
+        cp.execSync(`codesign --force --deep --sign - "${appBundle}"`, {
+          stdio: 'inherit',
+        });
+        console.log('Re-signing complete.');
       }
     },
     generateAssets: async (_, platform, arch) => {

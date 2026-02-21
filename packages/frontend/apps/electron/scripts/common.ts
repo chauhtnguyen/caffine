@@ -87,9 +87,9 @@ export const config = (): BuildOptions => {
     bundle: true,
     target: `node${NODE_MAJOR_VERSION}`,
     platform: 'node',
-    // caffine: bundle yjs and semver instead of externalizing them
+    // caffine: bundle everything except electron itself
     // upstream relies on symlinked node_modules in asar, which breaks in our fork
-    external: ['electron', 'electron-updater'],
+    external: ['electron'],
     format: 'cjs',
     loader: {
       '.node': 'copy',
