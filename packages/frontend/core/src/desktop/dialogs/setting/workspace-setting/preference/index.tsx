@@ -12,6 +12,7 @@ import { ArrowRightSmallIcon } from '@blocksuite/icons/rc';
 import { FrameworkScope, useService } from '@toeverything/infra';
 import { useCallback } from 'react';
 
+import { DatabasePanel } from './database';
 import { DeleteLeaveWorkspace } from './delete-leave-workspace';
 import { EnableCloudPanel } from './enable-cloud';
 import { LabelsPanel } from './labels';
@@ -60,6 +61,7 @@ export const WorkspaceSettingDetail = ({
           {workspace.flavour === 'local' && (
             <EnableCloudPanel onCloseSetting={onCloseSetting} />
           )}
+          <DatabasePanel />
         </SettingRow>
       </SettingWrapper>
       <TemplateDocSetting />
