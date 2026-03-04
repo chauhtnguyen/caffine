@@ -4,6 +4,7 @@ import { ipcMain } from 'electron';
 import { AFFINE_API_CHANNEL_NAME } from '../shared/type';
 import { clipboardHandlers } from './clipboard';
 import { configStorageHandlers } from './config-storage';
+import { databaseConfigHandlers } from './database-config/handlers';
 import { findInPageHandlers } from './find-in-page';
 import { getLogFilePath, logger, revealLogFile } from './logger';
 import { recordingHandlers } from './recording';
@@ -35,6 +36,7 @@ export const allHandlers = {
   clipboard: clipboardHandlers,
   updater: updaterHandlers,
   configStorage: configStorageHandlers,
+  databaseConfig: databaseConfigHandlers, // caffine
   findInPage: findInPageHandlers,
   sharedStorage: sharedStorageHandlers,
   worker: workerHandlers,

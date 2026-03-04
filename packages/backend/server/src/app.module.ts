@@ -32,7 +32,6 @@ import { AccessTokenModule } from './core/access-token';
 import { AuthModule } from './core/auth';
 import { CommentModule } from './core/comment';
 import { ServerConfigModule, ServerConfigResolverModule } from './core/config';
-import { DatabaseConfigModule } from './core/database-config';
 import { DocStorageModule } from './core/doc';
 import { DocRendererModule } from './core/doc-renderer';
 import { DocServiceModule } from './core/doc-service';
@@ -172,7 +171,6 @@ export function buildAppModule(env: Env) {
     // business modules
     .use(
       ServerConfigModule,
-      DatabaseConfigModule,
       FeatureModule,
       QuotaModule,
       DocStorageModule,

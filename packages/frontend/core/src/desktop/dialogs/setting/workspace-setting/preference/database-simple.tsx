@@ -2,8 +2,10 @@ import { notify } from '@affine/component';
 import { SettingRow } from '@affine/component/setting-components';
 import { Button } from '@affine/component/ui/button';
 import { Input } from '@affine/component/ui/input';
-import { useCallback, useState } from 'react';
+import { apis } from '@affine/electron-api';
+import { useCallback, useEffect, useState } from 'react';
 
+// caffine: Database config panel using Electron IPC
 export const DatabasePanel = () => {
   const [config, setConfig] = useState({
     host: 'localhost',
@@ -13,6 +15,19 @@ export const DatabasePanel = () => {
     password: '',
   });
 
+  useEffect(() => {
+    apis?.databaseConfig
+      .getConfig()
+      .then(saved => {
+        if (saved) {
+          setConfig(saved);
+        }
+      })
+      .catch(() => {
+        // use defaults
+      });
+  }, []);
+
   const handleInputChange = useCallback(
     (field: string, value: string | number) => {
       setConfig(prev => ({ ...prev, [field]: value }));
@@ -21,15 +36,17 @@ export const DatabasePanel = () => {
   );
 
   const handleTestConnection = useCallback(async () => {
-    try {
-      const response = await fetch('/api/database/test-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+    if (!apis) {
+      notify.error({
+        title: 'Not Available',
+        message: 'Database config is only available in the desktop app',
       });
-      const result = await response.json();
+      return;
+    }
+    try {
+      const result = await apis.databaseConfig.testConnection(config);
 
-      if (result.success) {
+      if (result?.success) {
         notify.success({
           title: 'Connection Successful',
           message: `Connected to PostgreSQL`,
@@ -37,7 +54,7 @@ export const DatabasePanel = () => {
       } else {
         notify.error({
           title: 'Connection Failed',
-          message: result.error || 'Could not connect',
+          message: result?.error || 'Could not connect',
         });
       }
     } catch (error: any) {
@@ -49,15 +66,17 @@ export const DatabasePanel = () => {
   }, [config]);
 
   const handleSave = useCallback(async () => {
-    try {
-      const response = await fetch('/api/database/config', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config),
+    if (!apis) {
+      notify.error({
+        title: 'Not Available',
+        message: 'Database config is only available in the desktop app',
       });
-      const result = await response.json();
+      return;
+    }
+    try {
+      const result = await apis.databaseConfig.saveConfig(config);
 
-      if (result.success) {
+      if (result?.success) {
         notify.success({
           title: 'Configuration Saved',
           message: 'Database configuration updated',
@@ -84,6 +103,7 @@ export const DatabasePanel = () => {
       }}
     >
       <div
+        id="database-config-panel"
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -93,7 +113,10 @@ export const DatabasePanel = () => {
         }}
       >
         {/* Host */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div
+          id="database-config-host"
+          style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}
+        >
           <label
             style={{
               fontSize: '13px',
@@ -112,7 +135,10 @@ export const DatabasePanel = () => {
         </div>
 
         {/* Port */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div
+          id="database-config-port"
+          style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}
+        >
           <label
             style={{
               fontSize: '13px',
@@ -134,7 +160,10 @@ export const DatabasePanel = () => {
         </div>
 
         {/* Database */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div
+          id="database-config-database"
+          style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}
+        >
           <label
             style={{
               fontSize: '13px',
@@ -153,7 +182,10 @@ export const DatabasePanel = () => {
         </div>
 
         {/* Username */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div
+          id="database-config-username"
+          style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}
+        >
           <label
             style={{
               fontSize: '13px',
@@ -172,7 +204,10 @@ export const DatabasePanel = () => {
         </div>
 
         {/* Password */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div
+          id="database-config-password"
+          style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}
+        >
           <label
             style={{
               fontSize: '13px',
@@ -192,7 +227,10 @@ export const DatabasePanel = () => {
         </div>
 
         {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+        <div
+          id="database-config-actions"
+          style={{ display: 'flex', gap: '12px', marginTop: '8px' }}
+        >
           <Button
             onClick={() => void handleTestConnection()}
             variant="secondary"
